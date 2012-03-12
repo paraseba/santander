@@ -27,6 +27,7 @@ El script es un 30 minutes hack, no tiene pretenciones de buena programación.
 - Ruby
 - zenity
 - gem 'watir-webdriver'
+- gpg
 
 ## Contributing
 
