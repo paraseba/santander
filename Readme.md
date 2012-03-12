@@ -10,6 +10,7 @@ En ese archivo ponga:
     {:dni=>"mydni", :numeric_password=>"4 digit pwd",
      :password=>"your complex password",
      :transfer_card=>["51", "25", "11", "60". all your numbers in order ......]}
+    ```
 
 Encripte el archivo usando `gpg -c --cipher-algo BLOWFISH passwords-santander.rb` o
 cualquier otro cipher. Esto pedirá un passphrase y generará un archivo
