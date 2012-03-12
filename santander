@@ -1,0 +1,168 @@
+#! /usr/bin/env ruby
+# encoding: utf-8
+
+# create passwords file named passwords-santander.rb in the same directory with:
+# {:dni=>"mydni", :numeric_password=>"4 digit pwd",
+#  :password=>"your password",
+#  :transfer_card=>["51", "25", "11", "60".......]}
+# encrypt the file with gpg -c --cipher-algo BLOWFISH passwords-santander.rb
+# delete the original file
+
+require 'watir-webdriver'
+
+def login(b, dni, numeric_password, password)
+  b.goto 'https://www.personas.santanderrio.com.ar'
+  b.text_field(:name => "dni").set dni
+  b.text_field(:name => "clave").set numeric_password
+  b.text_field(:name => "usuario").set password
+  b.input(:type => "image").click
+end
+
+def load_user_data(path)
+  puts "Ingrese la clave para desbloquear el archivo de secretos"
+  data = `gpg -d #{path} 2> /dev/null`
+  eval(data)
+end
+
+def find_menu(b, name)
+  b.frame(:name => "frame1").link(:text => name)
+end
+
+def make_browser(download_directory)
+  Dir.mkdir download_directory rescue nil
+  profile = Selenium::WebDriver::Firefox::Profile.new
+  profile['browser.download.folderList'] = 2 # custom location
+  profile['browser.download.dir'] = download_directory
+  profile['browser.helperApps.neverAsk.saveToDisk'] = "text/csv,application/pdf,application/vnd.ms-excel,application/msexcel,application/x-msexcel,application/x-ms-excel,application/vnd.ms-excel,application/x-excel,application/x-dos_ms_excel,application/xls"
+  Watir::Browser.new :firefox, :profile => profile
+end
+
+def submenu(b)
+  b.frame(:name => 'frame2').frame(:name => "rowOperaciones")
+end
+
+def productos(b)
+  b.frame(:name => 'frame2').frame(:name => "rowProductos")
+end
+
+def wait_and_click(b, link)
+  b.wait_until {|w| link.exists?}
+  link.click
+end
+
+def within_operation_area(b, &block)
+  yield(b.frame(:name => 'frame2').frame(:name => 'rowWorkingArea'))
+end
+
+def show_message(title, msg)
+ system(%Q[zenity --info --title="#{title}" --text="#{msg}"])
+end
+
+def confirmation(title, msg)
+ system(%Q[zenity --question --title="#{title}" --text="#{msg}"])
+ $? == 0
+end
+
+def get_coord(c, coords_array)
+  col = c.downcase[0].ord - "a".ord
+  row = c[1].ord - "1".ord
+  coords_array[col + 9*row]
+end
+
+def transfer(b, to_account, user_data)
+  wait_and_click(b, find_menu(b, "PAGOS Y TRANSFERENCIAS"))
+  wait_and_click(b, submenu(b).link(:text => "Transferencias"))
+  within_operation_area(b) do |w|
+    if to_account
+      combo = w.select(:name => "selCtaDest")
+      accounts = combo.options.map(&:text)
+      reg = Regexp.new(".*#{to_account.downcase}.*")
+      if match = accounts.find {|acc| reg.match(acc.downcase)}
+        combo.select match
+      end
+      w.div(:class => "btnPanelCuentas").a.click
+    end
+
+    show_message "Transferencia", "Ingrese los datos de la transferencia en el browser y luego aprete OK aquí"
+
+    w.input(:value => "CONTINUAR").click
+
+    if w.th(:class => "aviso").exists? #show schedule warning?
+      w.input(:name => "Continuar").click
+    end
+
+    coords = w.form(:id => "fBotones").td(:align => "center").text
+    coords = coords.split
+    coords = coords.map {|c| get_coord(c, user_data[:coord_card])}
+
+    w.text_field(:name => "incoord1").set(coords[0])
+    w.text_field(:name => "incoord2").set(coords[1])
+
+    if confirmation("Transferencia", "Seguro que desea realizar esta transferencia?")
+      w.input(:value => "CONTINUAR").click
+    end
+  end
+end
+
+def operations(b, downloads_path)
+  wait_and_click(b, find_menu(b, "CUENTAS"))
+  wait_and_click(b, submenu(b).link(:text => "Últimos movimientos"))
+  within_operation_area(b) do |w|
+    w.select(:name => "cantDias").select("Últimos 60 días")
+    w.input(:value => "Generar archivo excel").click
+  end
+  puts "Movimientos de cuenta salvado en #{downloads_path}"
+  wait_and_click(b, find_menu(b, "TARJETAS"))
+  for prod in ["prod0", "prod1"]
+    wait_and_click(b, productos(b).span(:id => prod).link)
+    wait_and_click(b, submenu(b).link(:text => "Último Resumen"))
+    within_operation_area(b) do |w|
+      b.wait_until {|_| w.div(:id => "template_data_div").exists?}
+      File.open(File.join(downloads_path, "resumen-#{prod}.txt"), "w") do |f|
+        f.write w.div(:id => "template_data_div").text
+        puts "Resumen de #{prod} salvado en #{f.path}"
+      end
+    end
+    wait_and_click(b, submenu(b).link(:text => "Últimos Consumos"))
+    within_operation_area(b) do |w|
+      b.wait_until {|_| w.div(:id => "template_data_div").exists?}
+      File.open(File.join(downloads_path, "ultimos-movimientos-#{prod}.txt"), "w") do |f|
+        f.write w.div(:id => "template_data_div").text
+        puts "Últimos movimientos de #{prod} salvado en #{f.path}"
+      end
+    end
+  end
+end
+
+
+def resumenes(b, downloads_path)
+  wait_and_click(b, find_menu(b, "CUENTAS"))
+  wait_and_click(b, submenu(b).link(:text => "Resumen de cuenta online"))
+end
+
+def usage
+  puts "santander op [args]"
+  puts "op = transfer | operations"
+  puts "args ="
+  puts "     for transfer: account-name (optional)"
+  exit 1
+end
+
+SECRETS_PATH = File.join(File.dirname(__FILE__), "passwords-santander.rb.gpg")
+DOWNLOADS_PATH = "/tmp/santander-downloads"
+
+case ARGV[0]
+when "transfer" then
+  user_data = load_user_data(SECRETS_PATH)
+  b = make_browser DOWNLOADS_PATH
+  login(b, user_data[:dni], user_data[:numeric_password], user_data[:password])
+  transfer b, ARGV[1], user_data
+when "operations" then
+  user_data = load_user_data(SECRETS_PATH)
+  b = make_browser DOWNLOADS_PATH
+  login(b, user_data[:dni], user_data[:numeric_password], user_data[:password])
+  operations b, DOWNLOADS_PATH
+else
+  usage
+end
+
