@@ -6,11 +6,11 @@ Cree un archivo en el mismo directorio que el script, llamado passwords-santande
 
 En ese archivo ponga:
 
-    ```ruby
-    {:dni=>"mydni", :numeric_password=>"4 digit pwd",
-     :password=>"your complex password",
-     :transfer_card=>["51", "25", "11", "60". all your numbers in order ......]}
-    ```
+```ruby
+{:dni=>"mydni", :numeric_password=>"4 digit pwd",
+ :password=>"your complex password",
+ :transfer_card=>["51", "25", "11", "60". all your numbers in order ......]}
+```
 
 Encripte el archivo usando `gpg -c --cipher-algo BLOWFISH passwords-santander.rb` o
 cualquier otro cipher. Esto pedirá un passphrase y generará un archivo
