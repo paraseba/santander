@@ -161,16 +161,19 @@ end
 SECRETS_PATH = File.join(File.dirname(__FILE__), "passwords-santander.rb.gpg")
 DOWNLOADS_PATH = "/tmp/santander-downloads"
 
+def start_browser_and_login
+  user_data = load_user_data(SECRETS_PATH)
+  b = make_browser DOWNLOADS_PATH
+  login(b, user_data[:dni], user_data[:numeric_password], user_data[:password])
+  b
+end
+
 case ARGV[0]
 when "transfer" then
-  user_data = load_user_data(SECRETS_PATH)
-  b = make_browser DOWNLOADS_PATH
-  login(b, user_data[:dni], user_data[:numeric_password], user_data[:password])
+  b = start_browser_and_login
   transfer b, ARGV[1], user_data
 when "operations" then
-  user_data = load_user_data(SECRETS_PATH)
-  b = make_browser DOWNLOADS_PATH
-  login(b, user_data[:dni], user_data[:numeric_password], user_data[:password])
+  b = start_browser_and_login
   operations b, DOWNLOADS_PATH
 when "statements" then
   user_data = load_user_data(SECRETS_PATH)
