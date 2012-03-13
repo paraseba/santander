@@ -135,9 +135,19 @@ def operations(b, downloads_path)
 end
 
 
-def resumenes(b, downloads_path)
+def statements(b)
   wait_and_click(b, find_menu(b, "CUENTAS"))
   wait_and_click(b, submenu(b).link(:text => "Resumen de cuenta online"))
+  within_operation_area(b) do |w|
+    combo = w.select(:name => "resumenes")
+    dates = combo.options.map(&:text)
+    dates.shift #drop prompt
+    for res in dates
+      puts "Bajando resumen #{res}"
+      combo.select(res)
+      w.input(:value => "verresumen").click
+    end
+  end
 end
 
 def usage
@@ -162,6 +172,11 @@ when "operations" then
   b = make_browser DOWNLOADS_PATH
   login(b, user_data[:dni], user_data[:numeric_password], user_data[:password])
   operations b, DOWNLOADS_PATH
+when "statements" then
+  user_data = load_user_data(SECRETS_PATH)
+  b = make_browser DOWNLOADS_PATH
+  login(b, user_data[:dni], user_data[:numeric_password], user_data[:password])
+  statements b
 else
   usage
 end
