@@ -41,4 +41,5 @@ Como sea, cualquier ayuda para agregar operaciones o mejorar el script será bie
   alguna cuenta ya creada en la agenda le Santander
   - Download de xls de últimos movimientos y resúmenes de tarjetas
   - Download de todos resúmenes de cuenta disponibles
+  - Consulta de saldo de cuentas
   - Inflexible, asume un montón de cosas, probablemente me funcione solo a mí.
