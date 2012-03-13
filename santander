@@ -179,21 +179,30 @@ def start_browser_and_login
   b
 end
 
+def with_logged_in_browser
+  b = start_browser_and_login
+  yield b
+ensure
+  b.close rescue nil
+end
+
 case ARGV[0]
 when "transfer" then
-  b = start_browser_and_login
-  transfer b, ARGV[1], user_data
+  with_logged_in_browser do |b|
+    transfer b, ARGV[1], user_data
+  end
 when "operations" then
-  b = start_browser_and_login
-  operations b, DOWNLOADS_PATH
+  with_logged_in_browser do |b|
+    operations b, DOWNLOADS_PATH
+  end
 when "statements" then
-  user_data = load_user_data(SECRETS_PATH)
-  b = make_browser DOWNLOADS_PATH
-  login(b, user_data[:dni], user_data[:numeric_password], user_data[:password])
-  statements b
+  with_logged_in_browser do |b|
+    statements b
+  end
 when "balance" then
-  b = start_browser_and_login
-  balance b
+  with_logged_in_browser do |b|
+    balance b
+  end
 else
   usage
 end
