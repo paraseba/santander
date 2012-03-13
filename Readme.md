@@ -40,4 +40,5 @@ Como sea, cualquier ayuda para agregar operaciones o mejorar el script será bie
   - Las transferencias pueden ser sin destinatario o con un string que matchee
   alguna cuenta ya creada en la agenda le Santander
   - Download de xls de últimos movimientos y resúmenes de tarjetas
+  - Download de todos resúmenes de cuenta disponibles
   - Inflexible, asume un montón de cosas, probablemente me funcione solo a mí.
