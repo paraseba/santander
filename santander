@@ -200,7 +200,7 @@ end
 
 case ARGV[0]
 when "login" then
-  with_logged_in_browser(false) {|_|}
+  with_logged_in_browser(:person, false) {|_|}
 when "transfer" then
   with_logged_in_browser do |b|
     transfer b, ARGV[1], user_data
