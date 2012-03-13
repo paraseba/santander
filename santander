@@ -37,12 +37,15 @@ def make_browser(download_directory)
   Watir::Browser.new :firefox, :profile => profile
 end
 
+def main_frame(b)
+  b.frame(:name => 'frame2')
+end
 def submenu(b)
-  b.frame(:name => 'frame2').frame(:name => "rowOperaciones")
+  main_frame(b).frame(:name => "rowOperaciones")
 end
 
 def productos(b)
-  b.frame(:name => 'frame2').frame(:name => "rowProductos")
+  main_frame(b).frame(:name => "rowProductos")
 end
 
 def wait_and_click(b, link)
@@ -51,7 +54,7 @@ def wait_and_click(b, link)
 end
 
 def within_operation_area(b, &block)
-  yield(b.frame(:name => 'frame2').frame(:name => 'rowWorkingArea'))
+  yield(main_frame(b).frame(:name => 'rowWorkingArea'))
 end
 
 def show_message(title, msg)
@@ -134,6 +137,14 @@ def operations(b, downloads_path)
   end
 end
 
+def balance(b)
+  b.wait_until {|_| main_frame(b).th(:text => "Cuenta").exists?}
+  accounts_table = main_frame(b).th(:text, "Cuenta").parent.parent.parent
+
+  accounts_table.tbody.strings.each do |row|
+    puts "#{row[0]}\t#{row[1]}"
+  end
+end
 
 def statements(b)
   wait_and_click(b, find_menu(b, "CUENTAS"))
@@ -152,7 +163,7 @@ end
 
 def usage
   puts "santander op [args]"
-  puts "op = transfer | operations"
+  puts "op = transfer | operations | balance"
   puts "args ="
   puts "     for transfer: account-name (optional)"
   exit 1
@@ -161,23 +172,37 @@ end
 SECRETS_PATH = File.join(File.dirname(__FILE__), "passwords-santander.rb.gpg")
 DOWNLOADS_PATH = "/tmp/santander-downloads"
 
+def start_browser_and_login
+  user_data = load_user_data(SECRETS_PATH)
+  b = make_browser DOWNLOADS_PATH
+  login(b, user_data[:dni], user_data[:numeric_password], user_data[:password])
+  b
+end
+
+def with_logged_in_browser
+  b = start_browser_and_login
+  yield b
+ensure
+  b.close rescue nil
+end
+
 case ARGV[0]
 when "transfer" then
-  user_data = load_user_data(SECRETS_PATH)
-  b = make_browser DOWNLOADS_PATH
-  login(b, user_data[:dni], user_data[:numeric_password], user_data[:password])
-  transfer b, ARGV[1], user_data
+  with_logged_in_browser do |b|
+    transfer b, ARGV[1], user_data
+  end
 when "operations" then
-  user_data = load_user_data(SECRETS_PATH)
-  b = make_browser DOWNLOADS_PATH
-  login(b, user_data[:dni], user_data[:numeric_password], user_data[:password])
-  operations b, DOWNLOADS_PATH
+  with_logged_in_browser do |b|
+    operations b, DOWNLOADS_PATH
+  end
 when "statements" then
-  user_data = load_user_data(SECRETS_PATH)
-  b = make_browser DOWNLOADS_PATH
-  login(b, user_data[:dni], user_data[:numeric_password], user_data[:password])
-  statements b
+  with_logged_in_browser do |b|
+    statements b
+  end
+when "balance" then
+  with_logged_in_browser do |b|
+    balance b
+  end
 else
   usage
 end
-
