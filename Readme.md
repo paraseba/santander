@@ -36,6 +36,7 @@ Como sea, cualquier ayuda para agregar operaciones o mejorar el script será bie
 ## History
 
 - Initial version
+  - Login
   - Transferencias, con login y tarjeta de coordenadas
   - Las transferencias pueden ser sin destinatario o con un string que matchee
   alguna cuenta ya creada en la agenda le Santander

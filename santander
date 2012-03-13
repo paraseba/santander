@@ -163,7 +163,7 @@ end
 
 def usage
   puts "santander op [args]"
-  puts "op = transfer | operations | balance"
+  puts "op = login | transfer | operations | balance | statements"
   puts "args ="
   puts "     for transfer: account-name (optional)"
   exit 1
@@ -179,14 +179,16 @@ def start_browser_and_login
   b
 end
 
-def with_logged_in_browser
+def with_logged_in_browser(close=true)
   b = start_browser_and_login
   yield b
 ensure
-  b.close rescue nil
+  b.close rescue nil if close
 end
 
 case ARGV[0]
+when "login" then
+  with_logged_in_browser(false) {|_|}
 when "transfer" then
   with_logged_in_browser do |b|
     transfer b, ARGV[1], user_data
