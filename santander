@@ -269,7 +269,7 @@ when "balance" then
 when "login_company" then
   with_logged_in_browser(:company, false) {}
 when "company_operations_last_month" then
-  with_logged_in_browser(:company, true, false) do |b|
+  with_logged_in_browser(:company, true, true) do |b|
     company_operations_last_month b
   end
 else
