@@ -177,12 +177,14 @@ def statements(b)
 end
 
 def close_company_popups_and_keep_main(b)
+  puts "Intentando cerrar popups..."
   # close 'Opere seguro' popup
   w = b.window(:title => "Opere seguro")
   w.wait_until_present(10)
   w.close
   # close initial window, main window is a popup
   b.window(:index => 0).close
+  puts "Popups cerrados"
 end
 
 def company_operations_last_month(b)
@@ -202,6 +204,7 @@ def company_operations_last_month(b)
     f.input(:type => "radio", :name => "formato", :index => 1).click
     f.input(:type => "button", :value => "Buscar").click
     f.b(:text => "La descarga a archivo ha finalizado").wait_until_present
+    puts "El archivo ha sido descargado"
   end
 end
 
