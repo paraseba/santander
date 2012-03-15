@@ -43,4 +43,6 @@ Como sea, cualquier ayuda para agregar operaciones o mejorar el script será bie
   - Download de xls de últimos movimientos y resúmenes de tarjetas
   - Download de todos resúmenes de cuenta disponibles
   - Consulta de saldo de cuentas
+  - Login a cuenta Pyme
+  - Descarga de extracto del mes anterior para cuenta Pyme
   - Inflexible, asume un montón de cosas, probablemente me funcione solo a mí.
