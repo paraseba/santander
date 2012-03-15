@@ -218,12 +218,13 @@ SECRETS_PATH = File.join(File.dirname(__FILE__), "passwords-santander.rb.gpg")
 DOWNLOADS_PATH = "/tmp/santander-downloads"
 
 def start_browser_and_login(type)
-  b = make_browser DOWNLOADS_PATH
   if type == :person
     user_data = load_user_data(SECRETS_PATH)
+    b = make_browser DOWNLOADS_PATH
     login(b, user_data[:dni], user_data[:numeric_password], user_data[:password])
   else
     user_data = load_user_data(COMPANY_SECRETS_PATH)
+    b = make_browser DOWNLOADS_PATH
     login_company(b, user_data[:cuit], user_data[:numeric_password])
   end
   b
