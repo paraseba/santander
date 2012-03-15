@@ -176,7 +176,7 @@ def statements(b)
   end
 end
 
-def close_company_popups_and_keep_main
+def close_company_popups_and_keep_main(b)
   # close 'Opere seguro' popup
   w = b.window(:title => "Opere seguro")
   w.wait_until_present(10)
@@ -186,7 +186,7 @@ def close_company_popups_and_keep_main
 end
 
 def company_operations_last_month(b)
-  close_company_popups_and_keep_main
+  close_company_popups_and_keep_main b
 
   wait_and_click(b, find_company_menu(b, "Cuentas"))
   wait_and_click(b, find_company_submenu(b, "Extracto y Movimientos del día"))
