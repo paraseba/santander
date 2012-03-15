@@ -9,6 +9,7 @@
 # delete the original file
 
 require 'watir-webdriver'
+require 'headless'
 
 def login(b, dni, numeric_password, password)
   b.goto 'https://www.personas.santanderrio.com.ar'
@@ -22,6 +23,7 @@ def login_company(b, cuit, numeric_password)
   b.text_field(:name => "cuit").set cuit
   b.text_field(:name => "password").set numeric_password
   b.input(:type => "button").click
+
 end
 
 def load_user_data(path)
@@ -43,7 +45,11 @@ def within_company_main_frame(b, &block)
   yield b.frame(:name => "frame2").frame(:name => "frameTrabajo")
 end
 
-def make_browser(download_directory)
+def make_browser(download_directory, headless = false)
+  if headless && !@headless_instance
+    @headless_instance = Headless.new
+    @headless_instance.start
+  end
   Dir.mkdir download_directory rescue nil
   profile = Selenium::WebDriver::Firefox::Profile.new
   profile['browser.download.folderList'] = 2 # custom location
@@ -220,24 +226,25 @@ COMPANY_SECRETS_PATH = File.join(File.dirname(__FILE__), "passwords-santander-co
 SECRETS_PATH = File.join(File.dirname(__FILE__), "passwords-santander.rb.gpg")
 DOWNLOADS_PATH = "/tmp/santander-downloads"
 
-def start_browser_and_login(type)
+def start_browser_and_login(type, headless)
   if type == :person
     user_data = load_user_data(SECRETS_PATH)
-    b = make_browser DOWNLOADS_PATH
+    b = make_browser DOWNLOADS_PATH, headless
     login(b, user_data[:dni], user_data[:numeric_password], user_data[:password])
   else
     user_data = load_user_data(COMPANY_SECRETS_PATH)
-    b = make_browser DOWNLOADS_PATH
+    b = make_browser DOWNLOADS_PATH, headless
     login_company(b, user_data[:cuit], user_data[:numeric_password])
   end
   b
 end
 
-def with_logged_in_browser(type = :person, close=true)
-  b = start_browser_and_login type
+def with_logged_in_browser(type = :person, close=true, headless = false)
+  b = start_browser_and_login type, headless
   yield b
 ensure
   b.close rescue nil if close
+  @headless_instance.destroy rescue nil if @headless_instance
 end
 
 case ARGV[0]
@@ -262,7 +269,7 @@ when "balance" then
 when "login_company" then
   with_logged_in_browser(:company, false) {}
 when "company_operations_last_month" then
-  with_logged_in_browser(:company) do |b|
+  with_logged_in_browser(:company, true, false) do |b|
     company_operations_last_month b
   end
 else
