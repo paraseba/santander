@@ -9,6 +9,7 @@
 # delete the original file
 
 require 'watir-webdriver'
+require 'headless'
 
 def login(b, dni, numeric_password, password)
   b.goto 'https://www.personas.santanderrio.com.ar'
@@ -16,6 +17,13 @@ def login(b, dni, numeric_password, password)
   b.text_field(:name => "clave").set numeric_password
   b.text_field(:name => "usuario").set password
   b.input(:type => "image").click
+end
+def login_company(b, cuit, numeric_password)
+  b.goto 'https://www.emp.santanderrio.com.ar/nb/'
+  b.text_field(:name => "cuit").set cuit
+  b.text_field(:name => "password").set numeric_password
+  b.input(:type => "button").click
+
 end
 
 def load_user_data(path)
@@ -27,8 +35,21 @@ end
 def find_menu(b, name)
   b.frame(:name => "frame1").link(:text => name)
 end
+def find_company_menu(b, name)
+  b.frame(:name => "frameMenu").link(:text => name)
+end
+def find_company_submenu(b, name)
+  b.frame(:name => "frame2").frame(:name => "frameOperaciones").link(:text => name)
+end
+def within_company_main_frame(b, &block)
+  yield b.frame(:name => "frame2").frame(:name => "frameTrabajo")
+end
 
-def make_browser(download_directory)
+def make_browser(download_directory, headless = false)
+  if headless && !@headless_instance
+    @headless_instance = Headless.new
+    @headless_instance.start
+  end
   Dir.mkdir download_directory rescue nil
   profile = Selenium::WebDriver::Firefox::Profile.new
   profile['browser.download.folderList'] = 2 # custom location
@@ -161,34 +182,74 @@ def statements(b)
   end
 end
 
+def close_company_popups_and_keep_main(b)
+  puts "Intentando cerrar popups..."
+  # close 'Opere seguro' popup
+  w = b.window(:title => "Opere seguro")
+  w.wait_until_present(10)
+  w.close
+  # close initial window, main window is a popup
+  b.window(:index => 0).close
+  puts "Popups cerrados"
+end
+
+def company_operations_last_month(b)
+  close_company_popups_and_keep_main b
+
+  wait_and_click(b, find_company_menu(b, "Cuentas"))
+  wait_and_click(b, find_company_submenu(b, "Extracto y Movimientos del día"))
+  within_company_main_frame(b) do |f|
+    f.input(:value => "Búsqueda Avanzada").click
+    f.input(:name, "fechaDde").wait_until_present
+    today = Date.today
+    date_start = (today << 1) - today.day + 1
+    date_end = today - today.day
+    format = "%d/%m/%Y"
+    f.text_field(:name, "fechaDde").set(date_start.strftime(format))
+    f.text_field(:name, "fechaHta").set(date_end.strftime(format))
+    f.input(:type => "radio", :name => "formato", :index => 1).click
+    f.input(:type => "button", :value => "Buscar").click
+    f.b(:text => "La descarga a archivo ha finalizado").wait_until_present
+    puts "El archivo ha sido descargado"
+  end
+end
+
 def usage
   puts "santander op [args]"
-  puts "op = login | transfer | operations | balance | statements"
+  puts "op = login | transfer | operations | balance | statements | login_company | company_operations_last_month"
   puts "args ="
   puts "     for transfer: account-name (optional)"
   exit 1
 end
 
+COMPANY_SECRETS_PATH = File.join(File.dirname(__FILE__), "passwords-santander-company.rb.gpg")
 SECRETS_PATH = File.join(File.dirname(__FILE__), "passwords-santander.rb.gpg")
 DOWNLOADS_PATH = "/tmp/santander-downloads"
 
-def start_browser_and_login
-  user_data = load_user_data(SECRETS_PATH)
-  b = make_browser DOWNLOADS_PATH
-  login(b, user_data[:dni], user_data[:numeric_password], user_data[:password])
+def start_browser_and_login(type, headless)
+  if type == :person
+    user_data = load_user_data(SECRETS_PATH)
+    b = make_browser DOWNLOADS_PATH, headless
+    login(b, user_data[:dni], user_data[:numeric_password], user_data[:password])
+  else
+    user_data = load_user_data(COMPANY_SECRETS_PATH)
+    b = make_browser DOWNLOADS_PATH, headless
+    login_company(b, user_data[:cuit], user_data[:numeric_password])
+  end
   b
 end
 
-def with_logged_in_browser(close=true)
-  b = start_browser_and_login
+def with_logged_in_browser(type = :person, close=true, headless = false)
+  b = start_browser_and_login type, headless
   yield b
 ensure
   b.close rescue nil if close
+  @headless_instance.destroy rescue nil if @headless_instance
 end
 
 case ARGV[0]
 when "login" then
-  with_logged_in_browser(false) {|_|}
+  with_logged_in_browser(:person, false) {|_|}
 when "transfer" then
   with_logged_in_browser do |b|
     transfer b, ARGV[1], user_data
@@ -204,6 +265,12 @@ when "statements" then
 when "balance" then
   with_logged_in_browser do |b|
     balance b
+  end
+when "login_company" then
+  with_logged_in_browser(:company, false) {}
+when "company_operations_last_month" then
+  with_logged_in_browser(:company, true, true) do |b|
+    company_operations_last_month b
   end
 else
   usage
