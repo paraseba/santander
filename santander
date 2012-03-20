@@ -193,7 +193,7 @@ def close_company_popups_and_keep_main(b)
   puts "Popups cerrados"
 end
 
-def company_operations_last_month(b)
+def company_operations_between_dates(b, from, to)
   close_company_popups_and_keep_main b
 
   wait_and_click(b, find_company_menu(b, "Cuentas"))
@@ -201,12 +201,9 @@ def company_operations_last_month(b)
   within_company_main_frame(b) do |f|
     f.input(:value => "Búsqueda Avanzada").click
     f.input(:name, "fechaDde").wait_until_present
-    today = Date.today
-    date_start = (today << 1) - today.day + 1
-    date_end = today - today.day
     format = "%d/%m/%Y"
-    f.text_field(:name, "fechaDde").set(date_start.strftime(format))
-    f.text_field(:name, "fechaHta").set(date_end.strftime(format))
+    f.text_field(:name, "fechaDde").set(from.strftime(format))
+    f.text_field(:name, "fechaHta").set(to.strftime(format))
     f.input(:type => "radio", :name => "formato", :index => 1).click
     f.input(:type => "button", :value => "Buscar").click
     f.b(:text => "La descarga a archivo ha finalizado").wait_until_present
@@ -214,9 +211,19 @@ def company_operations_last_month(b)
   end
 end
 
+def company_operations_last_month(b)
+  today = Date.today
+  date_start = (today << 1) - today.day + 1
+  date_end = today - today.day
+  company_operations_between_dates(b, date_start, date_end)
+end
+def company_operations_this_month(b)
+  company_operations_between_dates(b, Date.today - Date.today.day + 1, Date.today - 1)
+end
+
 def usage
   puts "santander op [args]"
-  puts "op = login | transfer | operations | balance | statements | login_company | company_operations_last_month"
+  puts "op = login | transfer | operations | balance | statements | login_company | company_operations_last_month | company_operations_this_month"
   puts "args ="
   puts "     for transfer: account-name (optional)"
   exit 1
@@ -271,6 +278,10 @@ when "login_company" then
 when "company_operations_last_month" then
   with_logged_in_browser(:company, true, true) do |b|
     company_operations_last_month b
+  end
+when "company_operations_this_month" then
+  with_logged_in_browser(:company, true, true) do |b|
+    company_operations_this_month b
   end
 else
   usage
