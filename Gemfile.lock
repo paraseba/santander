@@ -1,0 +1,23 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    childprocess (0.3.1)
+      ffi (~> 1.0.6)
+    ffi (1.0.11)
+    headless (0.2.2)
+    multi_json (1.1.0)
+    rubyzip (0.9.6.1)
+    selenium-webdriver (2.20.0)
+      childprocess (>= 0.2.5)
+      ffi (~> 1.0)
+      multi_json (~> 1.0)
+      rubyzip
+    watir-webdriver (0.5.3)
+      selenium-webdriver (>= 2.12.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  headless
+  watir-webdriver
