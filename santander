@@ -194,8 +194,6 @@ def close_company_popups_and_keep_main(b)
 end
 
 def company_operations_between_dates(b, from, to)
-  close_company_popups_and_keep_main b
-
   wait_and_click(b, find_company_menu(b, "Cuentas"))
   wait_and_click(b, find_company_submenu(b, "Extracto y Movimientos del día"))
   within_company_main_frame(b) do |f|
@@ -242,6 +240,8 @@ def start_browser_and_login(type, headless)
     user_data = load_user_data(COMPANY_SECRETS_PATH)
     b = make_browser DOWNLOADS_PATH, headless
     login_company(b, user_data[:cuit], user_data[:numeric_password])
+
+    close_company_popups_and_keep_main b
   end
   b
 end
