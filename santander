@@ -263,7 +263,7 @@ def start_browser_and_login(type, headless)
     b = make_browser DOWNLOADS_PATH, headless
     login_company(b, user_data[:cuit], user_data[:numeric_password])
 
-    close_company_popups_and_keep_main b
+    close_company_popups_and_keep_main b unless headless
   end
   b
 end
