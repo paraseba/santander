@@ -39,7 +39,13 @@ def find_company_menu(b, name)
   b.frame(:name => "frameMenu").link(:text => name)
 end
 def find_company_submenu(b, name)
-  b.frame(:name => "frame2").frame(:name => "frameOperaciones").link(:text => name)
+  company_submenu_frame(b).link(:text => name)
+end
+def company_submenu_frame(b)
+  b.frame(:name => "frame2").frame(:name => "frameOperaciones")
+end
+def find_company_submenu_by_index(b, index)
+  company_submenu_frame(b).link(:index => index)
 end
 def within_company_main_frame(b, &block)
   yield b.frame(:name => "frame2").frame(:name => "frameTrabajo")
@@ -219,9 +225,21 @@ def company_operations_this_month(b)
   company_operations_between_dates(b, Date.today - Date.today.day + 1, Date.today - 1)
 end
 
+def company_balance(b)
+  wait_and_click(b, find_company_menu(b, "Cuentas"))
+  balance_detail_link = find_company_submenu_by_index(b, 1)
+  wait_and_click(b, balance_detail_link)
+
+  within_company_main_frame(b) do |f|
+    f.table(:id => "mainTablaResumen").strings.each do |row|
+      puts "#{row[0]}\t#{row[1]}"
+    end
+  end
+end
+
 def usage
   puts "santander op [args]"
-  puts "op = login | transfer | operations | balance | statements | login_company | company_operations_last_month | company_operations_this_month"
+  puts "op = login | transfer | operations | balance | statements | login_company | company_operations_last_month | company_operations_this_month | company_balance"
   puts "args ="
   puts "     for transfer: account-name (optional)"
   exit 1
@@ -282,6 +300,10 @@ when "company_operations_last_month" then
 when "company_operations_this_month" then
   with_logged_in_browser(:company, true, true) do |b|
     company_operations_this_month b
+  end
+when "company_balance" then
+  with_logged_in_browser(:company, true, true) do |b|
+    company_balance b
   end
 else
   usage
