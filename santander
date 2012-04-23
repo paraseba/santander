@@ -39,7 +39,13 @@ def find_company_menu(b, name)
   b.frame(:name => "frameMenu").link(:text => name)
 end
 def find_company_submenu(b, name)
-  b.frame(:name => "frame2").frame(:name => "frameOperaciones").link(:text => name)
+  company_submenu_frame(b).link(:text => name)
+end
+def company_submenu_frame(b)
+  b.frame(:name => "frame2").frame(:name => "frameOperaciones")
+end
+def find_company_submenu_by_index(b, index)
+  company_submenu_frame(b).link(:index => index)
 end
 def within_company_main_frame(b, &block)
   yield b.frame(:name => "frame2").frame(:name => "frameTrabajo")
@@ -184,29 +190,28 @@ end
 
 def close_company_popups_and_keep_main(b)
   puts "Intentando cerrar popups..."
-  # close 'Opere seguro' popup
-  w = b.window(:title => "Opere seguro")
-  w.wait_until_present(10)
-  w.close
   # close initial window, main window is a popup
-  b.window(:index => 0).close
+  b.window(:index => 0).close rescue puts("No pude cerrar la ventana inicial")
+  # close 'Opere seguro' popup
+  begin
+    w = b.window(:title => "Opere seguro")
+    w.wait_until_present(10)
+    w.close
+  rescue
+    puts "No pude cerrar el popup 'Opere seguro'"
+  end
   puts "Popups cerrados"
 end
 
-def company_operations_last_month(b)
-  close_company_popups_and_keep_main b
-
+def company_operations_between_dates(b, from, to)
   wait_and_click(b, find_company_menu(b, "Cuentas"))
   wait_and_click(b, find_company_submenu(b, "Extracto y Movimientos del día"))
   within_company_main_frame(b) do |f|
     f.input(:value => "Búsqueda Avanzada").click
     f.input(:name, "fechaDde").wait_until_present
-    today = Date.today
-    date_start = (today << 1) - today.day + 1
-    date_end = today - today.day
     format = "%d/%m/%Y"
-    f.text_field(:name, "fechaDde").set(date_start.strftime(format))
-    f.text_field(:name, "fechaHta").set(date_end.strftime(format))
+    f.text_field(:name, "fechaDde").set(from.strftime(format))
+    f.text_field(:name, "fechaHta").set(to.strftime(format))
     f.input(:type => "radio", :name => "formato", :index => 1).click
     f.input(:type => "button", :value => "Buscar").click
     f.b(:text => "La descarga a archivo ha finalizado").wait_until_present
@@ -214,9 +219,31 @@ def company_operations_last_month(b)
   end
 end
 
+def company_operations_last_month(b)
+  today = Date.today
+  date_start = (today << 1) - today.day + 1
+  date_end = today - today.day
+  company_operations_between_dates(b, date_start, date_end)
+end
+def company_operations_this_month(b)
+  company_operations_between_dates(b, Date.today - Date.today.day + 1, Date.today - 1)
+end
+
+def company_balance(b)
+  wait_and_click(b, find_company_menu(b, "Cuentas"))
+  balance_detail_link = find_company_submenu_by_index(b, 1)
+  wait_and_click(b, balance_detail_link)
+
+  within_company_main_frame(b) do |f|
+    f.table(:id => "mainTablaResumen").strings.each do |row|
+      puts "#{row[0]}\t#{row[1]}"
+    end
+  end
+end
+
 def usage
   puts "santander op [args]"
-  puts "op = login | transfer | operations | balance | statements | login_company | company_operations_last_month"
+  puts "op = login | transfer | operations | balance | statements | login_company | company_operations_last_month | company_operations_this_month | company_balance"
   puts "args ="
   puts "     for transfer: account-name (optional)"
   exit 1
@@ -235,6 +262,8 @@ def start_browser_and_login(type, headless)
     user_data = load_user_data(COMPANY_SECRETS_PATH)
     b = make_browser DOWNLOADS_PATH, headless
     login_company(b, user_data[:cuit], user_data[:numeric_password])
+
+    close_company_popups_and_keep_main b unless headless
   end
   b
 end
@@ -271,6 +300,14 @@ when "login_company" then
 when "company_operations_last_month" then
   with_logged_in_browser(:company, true, true) do |b|
     company_operations_last_month b
+  end
+when "company_operations_this_month" then
+  with_logged_in_browser(:company, true, true) do |b|
+    company_operations_this_month b
+  end
+when "company_balance" then
+  with_logged_in_browser(:company, true, true) do |b|
+    company_balance b
   end
 else
   usage
